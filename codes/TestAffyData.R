@@ -276,32 +276,26 @@ sanityChecks <- function(normCntPath="//isilon.c2b2.columbia.edu/ifs/archive/sha
   ### 5. What if I personally perform my own t-test on the data?
   
   ### A function to perform t-test for DEA
-  ### rawCnt = raw count matrix, row = genes, column = samples
+  ### normGE = normalized gene expression matrix, row = genes, column = samples
   ### idx1 = column indices of condition1 (e.g., tumor)
   ### idx2 = column indices of condition2 (e.g., control)
-  simple_t_test <- function(rawCnt, idx1, idx2) {
-    ### remove useless genes
-    rCnt <- rawCnt[rowSums(rawCnt) > 1,]
+  simple_t_test <- function(normGE, idx1, idx2) {
     
-    ### compuate raw mean
-    mean <- apply(rCnt, 1, mean)
-    
-    ### normalization
-    rCnt <- log2(rCnt+1)
-    
-    ### compute fold changes and t-statistic values
+    ### compute mean values, fold changes, and t-statistic values
+    mean <- 0
     lfc <- 0
     t <- 0
-    for(i in 1:nrow(rCnt)) {
-      lfc[i] <- mean(as.numeric(rCnt[i,idx1])) - mean(as.numeric(rCnt[i,idx2]))
-      t[i] <- lfc[i] / sqrt((sd(rCnt[i,idx1])^2)/length(idx1) + (sd(rCnt[i,idx2])^2)/length(idx2))
+    for(i in 1:nrow(normGE)) {
+      mean[i] <- mean(as.numeric(normGE[i,]))
+      lfc[i] <- mean(as.numeric(normGE[i,idx1])) - mean(as.numeric(normGE[i,idx2]))
+      t[i] <- lfc[i] / sqrt((sd(normGE[i,idx1])^2)/length(idx1) + (sd(normGE[i,idx2])^2)/length(idx2))
     }
     
     ### compute p-value
     p <- 2*pt(-abs(t), df=length(union(idx1, idx2))-2)
     
     ### correct the p-value with Bonferroni correction
-    bon <- 1-((1-p)^nrow(rCnt))
+    bon <- 1-((1-p)^nrow(normGE))
     
     ### A function to correct p-values with Benjamini-Hochberg approach
     correct_bh <- function(pvs) {
@@ -330,14 +324,11 @@ sanityChecks <- function(normCntPath="//isilon.c2b2.columbia.edu/ifs/archive/sha
     bh <- correct_bh(p)
     
     ### combine mean, fold changes, t values, p-values, bonferroni, and benjamini-hochberg
-    result <- data.frame(cbind(Gene=rownames(rCnt), mean=mean, log2FC=lfc, t=t, pVal=p, bon_pVal=bon, bh_pVal=bh))
+    result <- data.frame(Gene=rownames(normGE), mean=mean, log2FC=lfc, t=t, pVal=p, bon_pVal=bon, bh_pVal=bh,
+                         stringsAsFactors = FALSE, check.names = FALSE)
     
     ### sort the result in order of bh p-value
     result <- result[order(result$bh_pVal, result$pVal),]
-    
-    ### if there are factor columns, change them to character columns
-    idx <- sapply(result, is.factor)
-    result[idx] <- lapply(result[idx], function(x) as.character(x))
     
     ### change numeric columns as numeric
     result[2:ncol(result)] <- lapply(result[2:ncol(result)], function(x) as.numeric(x))
@@ -345,13 +336,15 @@ sanityChecks <- function(normCntPath="//isilon.c2b2.columbia.edu/ifs/archive/sha
     return(result)
   }
   
+  ### do DE analysis with simple t-test
+  deresult13 <- simple_t_test(affy_norm_ge[,-1], idx_perio, idx_control)
+  rownames(deresult13) <- deresult13$Gene
   
-  
-  
-  
-  
-  
-  
+  ### plot FDR correlation
+  common_probes <- intersect(rownames(deresult2), rownames(deresult13)) 
+  plot(deresult2[common_probes, "adj.P.Val"], deresult13[common_probes, "bh_pVal"],
+       xlab = "Limma 235 vs 69 - adj.P.Val",
+       ylab = "Simple t-test 235 vs 69 - P.Val(BH corrected)")
   
 }
 
