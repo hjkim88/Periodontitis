@@ -147,6 +147,41 @@ significancePlot <- function(methylPath="//isilon.c2b2.columbia.edu/ifs/archive/
   ggsave(filename = paste0(outputDir, fName), width = 10, height = 10)
   
   
+  ### draw a plot that shows how many top genes are shared between RNA-Seq and EPIC
+  ### x-axis: the number of top genes
+  ### y-axis: the number of SHARED top genes between RNA-Seq and EPIC
+  
+  ### get indices based on FDR_Expression and on FDR_Mehtylation
+  expTopGeneIdx <- 1:nrow(cor_data)
+  methylTopGeneIdx <- order(cor_data$FDR_Methylation)
+  
+  ### prepare empty vectors
+  shared_num <- rep(0, nrow(cor_data))
+  random_num <- rep(0, nrow(cor_data))
+  best_num <- rep(0, nrow(cor_data))
+  
+  ### fill out the data
+  ### shared_num = the result
+  ### random_num = when the input data are random
+  ### best_num = when the input data are exactly identical
+  for(i in 1:nrow(cor_data)) {
+    shared_num[i] <- length(intersect(expTopGeneIdx[1:i], methylTopGeneIdx[1:i]))
+    random_num[i] <- (i^2) / nrow(cor_data)
+    best_num[i] <- i
+  }
+  
+  ### save the result as PNG
+  png(paste0(outputDir, "Plot_Shared_Genes_", substr(basename(methylRegPath), 1, nchar(basename(methylRegPath))-4), ".png"),
+      width = 1000, height = 950, res = 130)
+  plot(shared_num, main = "The number of top genes (smallest FDR) shared between RNA-Seq and EPIC",
+       xlab = "The number of top genes", ylab = "The number of SHARED genes")
+  lines(random_num, col = "red", lty = 2)
+  lines(best_num, col = "blue", lty = 2)
+  legend("topleft", legend=c("Result", "Random", "Best (identical)"),
+         col=c("black", "red", "blue"), lty=c(1,2,2), cex=1)
+  dev.off()
+  
+  
   ### create GeneRIF text
   if(length(idx) > 0) {
     ### load geneRIF

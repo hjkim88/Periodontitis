@@ -132,7 +132,8 @@ levelCor2 <- function(epicLevelPath="//isilon.c2b2.columbia.edu/ifs/archive/shar
   for(i in 1:nrow(rnaseqLev_periodontitis)) {
     new_cor_dist <- c(new_cor_dist, cor(as.numeric(rnaseqLev_periodontitis[i,]),
                                         as.numeric(epic_periodontitis[i,]),
-                                        use = "pairwise.complete.obs"))
+                                        use = "pairwise.complete.obs",
+                                        method = "spearman"))
   }
   names(new_cor_dist) <- rownames(rnaseqLev_periodontitis)
   
@@ -144,6 +145,11 @@ levelCor2 <- function(epicLevelPath="//isilon.c2b2.columbia.edu/ifs/archive/shar
   
   ### sort in ascending order
   new_cor_dist <- new_cor_dist[order(new_cor_dist)]
+  
+  ### write out a density plot
+  png(paste0(outputDir, "Density_Cor_EPIC_RNASEQ.png"), width = 800, height = 600)
+  plot(density(new_cor_dist), main = "Density of Spearman Correlation between EPIC & RNA-Seq")
+  dev.off()
   
   ### OLD - Gene Symbol base
   old_cor_dist <- NULL
@@ -161,7 +167,8 @@ levelCor2 <- function(epicLevelPath="//isilon.c2b2.columbia.edu/ifs/archive/shar
     ### correlation calculation
     old_cor_dist <- c(old_cor_dist, cor(temp_cor_data[,1],
                                         temp_cor_data[,2],
-                                        use = "pairwise.complete.obs"))
+                                        use = "pairwise.complete.obs",
+                                        method = "spearman"))
   }
   names(old_cor_dist) <- old_unique_genes
   
@@ -173,6 +180,12 @@ levelCor2 <- function(epicLevelPath="//isilon.c2b2.columbia.edu/ifs/archive/shar
   
   ### sort in ascending order
   old_cor_dist <- old_cor_dist[order(old_cor_dist)]
+  
+  ### write out a density plot
+  png(paste0(outputDir, "Density_Cor_450k_Affy.png"), width = 800, height = 600)
+  plot(density(old_cor_dist), main = "Density of Spearman Correlation between 450k & Affy")
+  dev.off()
+  
   
   ### a function to retreive one-tale empirical p-value (negative: small p-value, positive: large p-value)
   getEmpiricalPV <- function(target_cor, cor_dist) {
@@ -200,7 +213,7 @@ levelCor2 <- function(epicLevelPath="//isilon.c2b2.columbia.edu/ifs/archive/shar
       oldPlot <- ggplot(data = as.data.frame(cor_data2), aes(x=AFFY_NormExp_Perio, y=Methyl450K_Mvalue_Perio)) +
                  geom_point(color = "black", size = 1) +
                  labs(title=paste0(substr(fName, 1, nchar(fName)-11), "Old"),
-                      subtitle=sprintf("P.Cor = %s, Empirical.p.val = %s",
+                      subtitle=sprintf("S.Cor = %s, Empirical.p.val = %s",
                                   round(old_cor_dist[gList[i]], 5),
                                   round(getEmpiricalPV(old_cor_dist[gList[i]], old_cor_dist), 5))) +
                  xlab("Expression Levels") +
@@ -210,7 +223,7 @@ levelCor2 <- function(epicLevelPath="//isilon.c2b2.columbia.edu/ifs/archive/shar
       newPlot <- ggplot(data = as.data.frame(cor_data1), aes(x=RNASEQ_NormCnt_Perio, y=EPIC_Mvalue_Perio)) +
                  geom_point(color = "black", size = 1) +
                  labs(title=paste0(substr(fName, 1, nchar(fName)-11), "New"),
-                      subtitle=sprintf("P.Cor = %s, Empirical.p.val = %s",
+                      subtitle=sprintf("S.Cor = %s, Empirical.p.val = %s",
                                   round(new_cor_dist[gList[i]], 5),
                                   round(getEmpiricalPV(new_cor_dist[gList[i]], new_cor_dist), 5))) +
                  xlab("Expression Levels") +
@@ -240,8 +253,8 @@ levelCor2 <- function(epicLevelPath="//isilon.c2b2.columbia.edu/ifs/archive/shar
   oldPlot <- ggplot(data = as.data.frame(cor_data2), aes(x=AFFY_NormExp_Perio, y=Methyl450K_Mvalue_Perio)) +
              geom_point(color = "black", size = 1) +
              labs(title=paste0(substr(fName, 1, nchar(fName)-11), "Old"),
-                  subtitle=sprintf("P.Cor = %s, p-value = %s",
-                                   round(cor(cor_data2[,"AFFY_NormExp_Perio"], cor_data2[,"Methyl450K_Mvalue_Perio"], use = "pairwise.complete.obs"), 5),
+                  subtitle=sprintf("S.Cor = %s, p-value = %s",
+                                   round(cor(cor_data2[,"AFFY_NormExp_Perio"], cor_data2[,"Methyl450K_Mvalue_Perio"], use = "pairwise.complete.obs", method = "spearman"), 5),
                                    signif(cor.test(cor_data2[,"AFFY_NormExp_Perio"], cor_data2[,"Methyl450K_Mvalue_Perio"])$p.value, 5))) +
              xlab("Expression Levels") +
              ylab("Methylation Levels") +
@@ -250,8 +263,8 @@ levelCor2 <- function(epicLevelPath="//isilon.c2b2.columbia.edu/ifs/archive/shar
   newPlot <- ggplot(data = as.data.frame(cor_data1), aes(x=RNASEQ_NormCnt_Perio, y=EPIC_Mvalue_Perio)) +
              geom_point(color = "black", size = 1) +
              labs(title=paste0(substr(fName, 1, nchar(fName)-11), "New"),
-                  subtitle=sprintf("P.Cor = %s, p-value = %s",
-                                   round(cor(cor_data1[,"RNASEQ_NormCnt_Perio"], cor_data1[,"EPIC_Mvalue_Perio"], use = "pairwise.complete.obs"), 5),
+                  subtitle=sprintf("S.Cor = %s, p-value = %s",
+                                   round(cor(cor_data1[,"RNASEQ_NormCnt_Perio"], cor_data1[,"EPIC_Mvalue_Perio"], use = "pairwise.complete.obs", method = "spearman"), 5),
                                    signif(cor.test(cor_data1[,"RNASEQ_NormCnt_Perio"], cor_data1[,"EPIC_Mvalue_Perio"])$p.value, 5))) +
              xlab("Expression Levels") +
              ylab("Methylation Levels") +
