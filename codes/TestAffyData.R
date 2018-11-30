@@ -11,6 +11,7 @@
 #   * 3. How about DE analysis with random sample info?
 #   * 4. Does the size of sample affects FDRs of DE genes?
 #   * 5. What if I personally perform my own t-test on the data?
+#   * 6. What if I pre-process and normalize the raw data on my own? Will there be any difference?
 #
 #   Instruction
 #               1. Source("TestRNASEQData.R")
@@ -19,13 +20,17 @@
 #
 #   Example
 #               > source("The_directory_of_TestRNASEQData.R/TestRNASEQData.R")
-#               > sanityChecks(normCntPath="./data/Affy/panos_affy_data.rda")
+#               > sanityChecks(rawDataDir="E:/Panos/Affy/CEL/",
+#                              rawDataSampleInfoPath="E:/Panos/Affy/PatientsSamplesBiopsiesExperimentsSummary_rf2.txt",
+#                              normDataPath="./data/Affy/panos_affy_data.rda")
 ###
 
-sanityChecks <- function(normCntPath="//isilon.c2b2.columbia.edu/ifs/archive/shares/bisr/Papapanou/Sept_2018/PreprocessedData/Affy/panos_affy_data.rda") {
+sanityChecks <- function(rawDataDir="//isilon.c2b2.columbia.edu/ifs/archive/shares/bisr/Papapanou/R21/OriginalData/mRNA/LinkTomRNAData/",
+                         rawDataSampleInfoPath="//isilon.c2b2.columbia.edu/ifs/archive/shares/bisr/Papapanou/R21/rich_aim_1/PatientsSamplesBiopsiesExperimentsSummary_rf2.txt",
+                         normDataPath="//isilon.c2b2.columbia.edu/ifs/archive/shares/bisr/Papapanou/Sept_2018/PreprocessedData/Affy/panos_affy_data.rda") {
   
   ### load dataset
-  load(normCntPath)
+  load(normDataPath)
   
   
   ### Now the samples have replicates. Make them one sample for one person
@@ -345,6 +350,143 @@ sanityChecks <- function(normCntPath="//isilon.c2b2.columbia.edu/ifs/archive/sha
   plot(deresult2[common_probes, "adj.P.Val"], deresult13[common_probes, "bh_pVal"],
        xlab = "Limma 235 vs 69 - adj.P.Val",
        ylab = "Simple t-test 235 vs 69 - P.Val(BH corrected)")
+  
+  
+  ### 6. What if I pre-process and normalize the raw data on my own? Will there be any difference?
+  
+  ### load library
+  if(!require(affy)) {
+    source("https://bioconductor.org/biocLite.R")
+    biocLite("affy")
+    library(affy)
+  }
+  if(!require(sva)) {
+    source("https://bioconductor.org/biocLite.R")
+    biocLite("sva")
+    library(sva)
+  }
+  
+  
+  ### read CEL files
+  data <- ReadAffy(celfile.path = rawDataDir)
+  
+  
+  ### RMA normalization
+  eset <- rma(data)
+  
+  
+  ### filter the probes
+  eset <- featureFilter(eset, require.entrez=FALSE, remove.dupEntrez=FALSE)
+  
+  
+  ### get the normalized gene expressions as a data frame
+  df <- data.frame(exprs(eset), stringsAsFactors = FALSE, check.names = FALSE)
+  
+  
+  ### load sample info
+  sample_info <- read.table(file = rawDataSampleInfoPath, header = TRUE, sep = "\t",
+                            stringsAsFactors = FALSE, check.names = FALSE)
+  
+  
+  ### keep the samples only in the sample info
+  df <- df[,sample_info$mRNA]
+  
+  
+  ### A function to perform 2D PCA and save a plot
+  pca_plot <- function(normalizedMat, grp, title, component=c("PC1&PC2", "PC2&PC3"), filePath=NULL) {
+    
+    ### load library
+    if(!require(ggfortify)) {
+      install.packages("ggfortify")
+      library(ggfortify)
+    }
+    
+    ### PCA
+    pca_result <- prcomp(t(normalizedMat))
+    pca_group <- data.frame(pca_result$x, group=grp)
+    
+    colors = rainbow(length(unique(grp)))
+    names(colors) = unique(grp)
+    
+    ### plot
+    if(!is.null(filePath)) {
+      png(filename=filePath, width = 1000, height = 800)
+    }
+    if(component[1] == "PC1&PC2") {
+      print(ggplot(pca_group,aes(x=PC1,y=PC2,col=group)) +
+              labs(title=title) +
+              geom_text(aes(label=colnames(normalizedMat)),hjust=0, vjust=0) +
+              scale_color_manual(values = colors) +
+              theme_classic(base_size = 16))
+    } else if(component[1] == "PC2&PC3") {
+      print(ggplot(pca_group,aes(x=PC2,y=PC3,col=group)) +
+              labs(title=title) +
+              geom_text(aes(label=colnames(normalizedMat)),hjust=0, vjust=0) +
+              scale_color_manual(values = colors) +
+              theme_classic(base_size = 16))
+    } else {
+      stop("\"component\" parameter should be \"PC1&PC2\" or \"PC2&PC3\"")
+    }
+    if(!is.null(filePath)) {
+      dev.off()
+    }
+  }
+  
+  
+  ### pca plot
+  pca_plot(normalizedMat = df, grp = sample_info$Condition, title = "Before Batch Correction - Phenotype")
+  
+  
+  ### DE analysis
+  deresult14 <- limmaWithComparisons(normCnt = df,
+                                     grp = sample_info$Condition,
+                                     exp_class = "Affected",
+                                     ctrl_class = "Control",
+                                     bat_eff = NULL)
+  
+  
+  ### add scan date to the sample info
+  scan_date <- eset@protocolData@data$ScanDate
+  scan_date <- strsplit(scan_date, split = " ", fixed = TRUE)
+  scan_date <- sapply(scan_date, function(x) x[1])
+  scan_date <- strsplit(scan_date, split = "/", fixed = TRUE)
+  scan_date <- sapply(scan_date, function(x) x[3])
+  scan_date <- as.numeric(scan_date)
+  names(scan_date) <- colnames(exprs(eset))
+  sample_info <- data.frame(sample_info, ScanYear=scan_date[sample_info$mRNA],
+                            stringsAsFactors = FALSE, check.names = FALSE)
+  
+  
+  ### add batch info based on the scan year (4/5: Batch1, 6/7/8: Batch2)
+  sample_info <- data.frame(sample_info, Batch="", stringsAsFactors = FALSE, check.names = FALSE)
+  sample_info$Batch[which(sample_info$ScanYear %in% c(4, 5))] <- "Batch1"
+  sample_info$Batch[which(sample_info$ScanYear %in% c(6, 7, 8))] <- "Batch2"
+  
+  
+  ### pca plot
+  pca_plot(normalizedMat = df, grp = as.character(sample_info$ScanYear),
+           title = "Before Batch Correction - ScanYear")
+  pca_plot(normalizedMat = df, grp = as.character(sample_info$Batch),
+           title = "Before Batch Correction - Batch")
+  
+  
+  ### batch effect correction
+  new_df <- ComBat(dat = df, batch = as.character(sample_info$Batch),
+                   mod = model.matrix(~sample_info$Condition))
+  
+  
+  ### pca plot after batch effect correction
+  pca_plot(normalizedMat = new_df, grp = sample_info$Condition, title = "After Batch Correction - Phenotype")
+  pca_plot(normalizedMat = new_df, grp = as.character(sample_info$Batch),
+           title = "After Batch Correction - Batch")
+  
+  
+  ### DE analysis after batch effect correction
+  deresult15 <- limmaWithComparisons(normCnt = new_df,
+                                     grp = sample_info$Condition,
+                                     exp_class = "Affected",
+                                     ctrl_class = "Control",
+                                     bat_eff = NULL)
   
 }
 
