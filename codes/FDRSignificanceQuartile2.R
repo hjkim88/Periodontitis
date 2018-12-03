@@ -149,10 +149,11 @@ significancePlot2 <- function(methylPath="//isilon.c2b2.columbia.edu/ifs/archive
   ggplot(data = df, aes(x=FDR_Expression, y=FDR_Methylation)) +
     geom_point(color = "black", size = 1) +
     geom_label_repel(aes(FDR_Expression, FDR_Methylation, label = Label), color = "red", box.padding = unit(0.45, "lines")) +
-    labs(title=substr(fName, 1, nchar(fName)-4),
-         subtitle=sprintf("P.Cor = %s, p-value = %s",
-                          round(cor(df[,1], df[,2], use = "pairwise.complete.obs"), 5),
-                          signif(cor.test(df[,1], df[,2])$p.value, 5))) +
+    labs(title=substr(fName, 1, nchar(fName)-4)
+         # ,subtitle=sprintf("S.Cor = %s, p-value = %s",
+         #                  round(cor(df[,1], df[,2], use = "pairwise.complete.obs", method = "spearman"), 5),
+         #                  signif(cor.test(df[,1], df[,2], method = "spearman")$p.value, 5))
+         ) +
     xlab("Expression") +
     ylab("Methylation") +
     # geom_smooth(method = lm, color="gray", se=FALSE) +
