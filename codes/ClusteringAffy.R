@@ -17,9 +17,9 @@
 #               > clusteringAffy()
 ###
 
-clusteringAffy <- function(affyPath="./data/Affy/panos_affy_data.rda",
-                           rnaseqPath="./data/RNA_Seq/panos_rna_seq_data.rda",
-                           outputDir="./results/Test/") {
+clusteringAffy <- function(affyPath="//isilon.c2b2.columbia.edu/ifs/archive/shares/bisr/Papapanou/Sept_2018/PreprocessedData/Affy/panos_affy_data.rda",
+                           rnaseqPath="//isilon.c2b2.columbia.edu/ifs/archive/shares/bisr/Papapanou/Sept_2018/PreprocessedData/RNA_Seq/panos_rna_seq_data.rda",
+                           outputDir="//isilon.c2b2.columbia.edu/ifs/archive/shares/bisr/Papapanou/Sept_2018/Test/") {
   
   ### load library
   if(!require(sva, quietly = TRUE)) {
