@@ -22,15 +22,23 @@
 #                                gse79705InfoPath="./data/GSE79705/GSE79705_sample_info.txt",
 #                                gse23586ExpPath="./data/GSE23586/GSE23586_series_matrix.txt",
 #                                gse23586InfoPath="./data/GSE23586/GSE23586_sample_info.txt",
+#                                gse27993ExpPath="./data/GSE27993/GSE27993_series_matrix.txt",
+#                                gse27993InfoPath="./data/GSE27993/GSE27993_sample_info.txt",
+#                                gse33774ExpPath="./data/GSE33774/GSE33774_series_matrix.txt",
+#                                gse33774InfoPath="./data/GSE33774/GSE33774_sample_info.txt",
 #                                outputDir="./results/Test/")
 ###
 
 clusteringAffy <- function(affyPath="//isilon.c2b2.columbia.edu/ifs/archive/shares/bisr/Papapanou/Sept_2018/PreprocessedData/Affy/panos_affy_data.rda",
                            rnaseqPath="//isilon.c2b2.columbia.edu/ifs/archive/shares/bisr/Papapanou/Sept_2018/PreprocessedData/RNA_Seq/panos_rna_seq_data.rda",
-                           gse79705ExpPath="./data/GSE79705/GSE79705_100718_HG18_opt_expr_RMA.calls.txt",
-                           gse79705InfoPath="./data/GSE79705/GSE79705_sample_info.txt",
-                           gse23586ExpPath="./data/GSE23586/GSE23586_series_matrix.txt",
-                           gse23586InfoPath="./data/GSE23586/GSE23586_sample_info.txt",
+                           gse79705ExpPath="//isilon.c2b2.columbia.edu/ifs/archive/shares/bisr/Papapanou/Sept_2018/OriginalData/GSE79705/GSE79705_100718_HG18_opt_expr_RMA.calls.txt",
+                           gse79705InfoPath="//isilon.c2b2.columbia.edu/ifs/archive/shares/bisr/Papapanou/Sept_2018/OriginalData/GSE79705/GSE79705_sample_info.txt",
+                           gse23586ExpPath="//isilon.c2b2.columbia.edu/ifs/archive/shares/bisr/Papapanou/Sept_2018/OriginalData/GSE23586/GSE23586_series_matrix.txt",
+                           gse23586InfoPath="//isilon.c2b2.columbia.edu/ifs/archive/shares/bisr/Papapanou/Sept_2018/OriginalData/GSE23586/GSE23586_sample_info.txt",
+                           gse27993ExpPath="//isilon.c2b2.columbia.edu/ifs/archive/shares/bisr/Papapanou/Sept_2018/OriginalData/GSE27993/GSE27993_series_matrix.txt",
+                           gse27993InfoPath="//isilon.c2b2.columbia.edu/ifs/archive/shares/bisr/Papapanou/Sept_2018/OriginalData/GSE27993/GSE27993_sample_info.txt",
+                           gse33774ExpPath="//isilon.c2b2.columbia.edu/ifs/archive/shares/bisr/Papapanou/Sept_2018/OriginalData/GSE33774/GSE33774_series_matrix.txt",
+                           gse33774InfoPath="//isilon.c2b2.columbia.edu/ifs/archive/shares/bisr/Papapanou/Sept_2018/OriginalData/GSE33774/GSE33774_sample_info.txt",
                            outputDir="//isilon.c2b2.columbia.edu/ifs/archive/shares/bisr/Papapanou/Sept_2018/Test/") {
   
   ### load library
@@ -39,11 +47,15 @@ clusteringAffy <- function(affyPath="//isilon.c2b2.columbia.edu/ifs/archive/shar
     biocLite("sva")
     require(sva, quietly = TRUE)
   }
-  ### load library
   if(!require(hgu133plus2.db, quietly = TRUE)) {
     source("https://bioconductor.org/biocLite.R")
     biocLite("hgu133plus2.db")
     require(hgu133plus2.db, quietly = TRUE)
+  }
+  if(!require(hugene10sttranscriptcluster.db, quietly = TRUE)) {
+    source("https://bioconductor.org/biocLite.R")
+    biocLite("hugene10sttranscriptcluster.db")
+    require(hugene10sttranscriptcluster.db, quietly = TRUE)
   }
   
   
@@ -364,11 +376,14 @@ clusteringAffy <- function(affyPath="//isilon.c2b2.columbia.edu/ifs/archive/shar
   mapped_probes <- mappedkeys(x)
   xx <- as.list(x[mapped_probes])
   
+  
   ### get common probes
   common_probes <- intersect(rownames(gse23586_exp), names(xx))
   
+  
   ### keep common probes only
   gse23586_exp <- gse23586_exp[common_probes,]
+  
   
   ### annotate gene symbols
   gse23586_exp <- data.frame(Gene_Symbol=sapply(xx[common_probes], function(y) {
@@ -440,13 +455,218 @@ clusteringAffy <- function(affyPath="//isilon.c2b2.columbia.edu/ifs/archive/shar
            filePath = paste0(outputDir, "pca_combined_affy_gse23586_chip_chip_effect_corrected.png"))
   
   
-  #############################################################################################
-  ### select random 8 periodontitis and random 4 healthy and perform DE analysis 1000 times ###
-  #############################################################################################
+  ### GSE27993
+  
+  ### load data
+  gse27993_exp <- read.table(file = gse27993ExpPath, header = TRUE, sep = "\t", row.names = 1,
+                             stringsAsFactors = FALSE, check.names = FALSE)
+  gse27993_sample_info <- read.table(file = gse27993InfoPath, header = TRUE, sep = "\t", row.names = 1,
+                                     stringsAsFactors = FALSE, check.names = FALSE)
   
   
+  ### annotate gene symbols to the data
+  ### convert microarray probes to gene symbols
+  ### [HuGene-1_0-st] Affymetrix Human Gene 1.0 ST Array
+  ### get gene symbol mapping info
+  x <- hugene10sttranscriptclusterSYMBOL
+  mapped_probes <- mappedkeys(x)
+  xx <- as.list(x[mapped_probes])
   
   
+  ### get common probes
+  common_probes <- intersect(rownames(gse27993_exp), names(xx))
+  
+  
+  ### keep common probes only
+  gse27993_exp <- gse27993_exp[common_probes,]
+  
+  
+  ### annotate gene symbols
+  gse27993_exp <- data.frame(Gene_Symbol=sapply(xx[common_probes], function(y) {
+    return(y[1])
+  }),
+  gse27993_exp, stringsAsFactors = FALSE, check.names = FALSE)
+  
+  
+  ### DE analysis - periodontitis vs healthy
+  deresult_gse27993 <- limmaWithComparisons(normCnt = gse27993_exp[,-1],
+                                            grp = gse27993_sample_info$Phenotype,
+                                            exp_class = "Periodontitis",
+                                            ctrl_class = "Healthy",
+                                            bat_eff = NULL)
+  
+  
+  ### write out the DE result
+  write.table(data.frame(Probe=rownames(deresult_gse27993), deresult_gse27993,
+                         stringsAsFactors = FALSE, check.names = FALSE),
+              file = paste0(outputDir, "limma_gse27993_periodontitis_vs_healthy.txt"),
+              sep = "\t", row.names = FALSE)
+  
+  
+  ### sum up for any one gene: probe -> gene mapping, one gene - one row
+  unique_genes <- unique(gse27993_exp$Gene_Symbol)
+  new_gse27993_exp <- NULL
+  for(i in 1:length(unique_genes)) {
+    temp <- gse27993_exp[which(gse27993_exp$Gene_Symbol == unique_genes[i]), -1]
+    new_gse27993_exp <- rbind(new_gse27993_exp, apply(temp, 2, sum))
+  }
+  rownames(new_gse27993_exp) <- unique_genes
+  new_gse27993_exp <- as.data.frame(new_gse27993_exp)
+  
+  
+  ### combine new affy and new gse27993
+  common_genes <- intersect(rownames(new_affy_norm_ge), rownames(new_gse27993_exp))
+  combined_affy_gse27993 <- data.frame(scale(new_affy_norm_ge[common_genes,]),
+                                       scale(new_gse27993_exp[common_genes,]),
+                                       stringsAsFactors = FALSE, check.names = FALSE)
+  combined_affy_gse27993_sample_info <- data.frame(Phenotype=c(affy_norm_ge_sample_info$Condition,
+                                                               gse27993_sample_info$Phenotype),
+                                                   Chip=c(rep("Affy", ncol(new_affy_norm_ge)),
+                                                          rep("GSE27993", ncol(new_gse27993_exp))),
+                                                   stringsAsFactors = FALSE, check.names = FALSE)
+  combined_affy_gse27993_sample_info[which(combined_affy_gse27993_sample_info$Phenotype == "Affected"), "Phenotype"] <- "Periodontitis"
+  combined_affy_gse27993_sample_info[which(combined_affy_gse27993_sample_info$Phenotype == "Control"), "Phenotype"] <- "Healthy"
+  rownames(combined_affy_gse27993_sample_info) <- colnames(combined_affy_gse27993)
+  
+  
+  ### PCA plot - lebeling with the phenotype info
+  pca_plot(normalizedMat = combined_affy_gse27993,
+           grp = combined_affy_gse27993_sample_info$Phenotype,
+           title = "pca_combined_affy_gse27993_phenotype",
+           filePath = paste0(outputDir, "pca_combined_affy_gse27993_phenotype.png"))
+  
+  
+  ### PCA plot - lebeling with the chip info
+  pca_plot(normalizedMat = combined_affy_gse27993,
+           grp = combined_affy_gse27993_sample_info$Chip,
+           title = "pca_combined_affy_gse27993_chip",
+           filePath = paste0(outputDir, "pca_combined_affy_gse27993_chip.png"))
+  
+  
+  ### chip effect correction
+  combined_data_cc <- ComBat(dat = as.matrix(combined_affy_gse27993), batch = combined_affy_gse27993_sample_info$Chip,
+                             mod = model.matrix(~combined_affy_gse27993_sample_info$Phenotype))
+  
+  
+  ### PCA plot - lebeling with the phenotype info - After chip effect correction
+  pca_plot(normalizedMat = combined_data_cc,
+           grp = combined_affy_gse27993_sample_info$Phenotype,
+           title = "pca_combined_affy_gse27993_phenotype_chip_effect_corrected",
+           filePath = paste0(outputDir, "pca_combined_affy_gse27993_phenotype_chip_effect_corrected.png"))
+  
+  
+  ### PCA plot - lebeling with the chip info - After chip effect correction
+  pca_plot(normalizedMat = combined_data_cc,
+           grp = combined_affy_gse27993_sample_info$Chip,
+           title = "pca_combined_affy_gse27993_chip_chip_effect_corrected",
+           filePath = paste0(outputDir, "pca_combined_affy_gse27993_chip_chip_effect_corrected.png"))
+  
+  
+  ### GSE27993
+  
+  ### load data
+  gse33774_exp <- read.table(file = gse33774ExpPath, header = TRUE, sep = "\t", row.names = 1,
+                             stringsAsFactors = FALSE, check.names = FALSE)
+  gse33774_sample_info <- read.table(file = gse33774InfoPath, header = TRUE, sep = "\t", row.names = 1,
+                                     stringsAsFactors = FALSE, check.names = FALSE)
+  
+  
+  ### annotate gene symbols to the data
+  ### convert microarray probes to gene symbols
+  ### [HuGene-1_0-st] Affymetrix Human Gene 1.0 ST Array
+  ### get gene symbol mapping info
+  x <- hugene10sttranscriptclusterSYMBOL
+  mapped_probes <- mappedkeys(x)
+  xx <- as.list(x[mapped_probes])
+  
+  
+  ### get common probes
+  common_probes <- intersect(rownames(gse33774_exp), names(xx))
+  
+  
+  ### keep common probes only
+  gse33774_exp <- gse33774_exp[common_probes,]
+  
+  
+  ### annotate gene symbols
+  gse33774_exp <- data.frame(Gene_Symbol=sapply(xx[common_probes], function(y) {
+    return(y[1])
+  }),
+  gse33774_exp, stringsAsFactors = FALSE, check.names = FALSE)
+  
+  
+  ### DE analysis - parodontitis vs healthy
+  deresult_gse33774 <- limmaWithComparisons(normCnt = gse33774_exp[,-1],
+                                            grp = gse33774_sample_info$Phenotype,
+                                            exp_class = "Parodontitis",
+                                            ctrl_class = "Healthy",
+                                            bat_eff = NULL)
+  
+  
+  ### write out the DE result
+  write.table(data.frame(Probe=rownames(deresult_gse33774), deresult_gse33774,
+                         stringsAsFactors = FALSE, check.names = FALSE),
+              file = paste0(outputDir, "limma_gse33774_parodontitis_vs_healthy.txt"),
+              sep = "\t", row.names = FALSE)
+  
+  
+  ### sum up for any one gene: probe -> gene mapping, one gene - one row
+  unique_genes <- unique(gse33774_exp$Gene_Symbol)
+  new_gse33774_exp <- NULL
+  for(i in 1:length(unique_genes)) {
+    temp <- gse33774_exp[which(gse33774_exp$Gene_Symbol == unique_genes[i]), -1]
+    new_gse33774_exp <- rbind(new_gse33774_exp, apply(temp, 2, sum))
+  }
+  rownames(new_gse33774_exp) <- unique_genes
+  new_gse33774_exp <- as.data.frame(new_gse33774_exp)
+  
+  
+  ### combine new affy and new gse33774
+  common_genes <- intersect(rownames(new_affy_norm_ge), rownames(new_gse33774_exp))
+  combined_affy_gse33774 <- data.frame(scale(new_affy_norm_ge[common_genes,]),
+                                       scale(new_gse33774_exp[common_genes,]),
+                                       stringsAsFactors = FALSE, check.names = FALSE)
+  combined_affy_gse33774_sample_info <- data.frame(Phenotype=c(affy_norm_ge_sample_info$Condition,
+                                                               gse33774_sample_info$Phenotype),
+                                                   Chip=c(rep("Affy", ncol(new_affy_norm_ge)),
+                                                          rep("GSE33774", ncol(new_gse33774_exp))),
+                                                   stringsAsFactors = FALSE, check.names = FALSE)
+  combined_affy_gse33774_sample_info[which(combined_affy_gse33774_sample_info$Phenotype == "Affected"), "Phenotype"] <- "Periodontitis"
+  combined_affy_gse33774_sample_info[which(combined_affy_gse33774_sample_info$Phenotype == "Control"), "Phenotype"] <- "Healthy"
+  rownames(combined_affy_gse33774_sample_info) <- colnames(combined_affy_gse33774)
+  
+  
+  ### PCA plot - lebeling with the phenotype info
+  pca_plot(normalizedMat = combined_affy_gse33774,
+           grp = combined_affy_gse33774_sample_info$Phenotype,
+           title = "pca_combined_affy_gse33774_phenotype",
+           filePath = paste0(outputDir, "pca_combined_affy_gse33774_phenotype.png"))
+  
+  
+  ### PCA plot - lebeling with the chip info
+  pca_plot(normalizedMat = combined_affy_gse33774,
+           grp = combined_affy_gse33774_sample_info$Chip,
+           title = "pca_combined_affy_gse33774_chip",
+           filePath = paste0(outputDir, "pca_combined_affy_gse33774_chip.png"))
+  
+  
+  ### chip effect correction
+  combined_data_cc <- ComBat(dat = as.matrix(combined_affy_gse33774), batch = combined_affy_gse33774_sample_info$Chip,
+                             mod = model.matrix(~combined_affy_gse33774_sample_info$Phenotype))
+  
+  
+  ### PCA plot - lebeling with the phenotype info - After chip effect correction
+  pca_plot(normalizedMat = combined_data_cc,
+           grp = combined_affy_gse33774_sample_info$Phenotype,
+           title = "pca_combined_affy_gse33774_phenotype_chip_effect_corrected",
+           filePath = paste0(outputDir, "pca_combined_affy_gse33774_phenotype_chip_effect_corrected.png"))
+  
+  
+  ### PCA plot - lebeling with the chip info - After chip effect correction
+  pca_plot(normalizedMat = combined_data_cc,
+           grp = combined_affy_gse33774_sample_info$Chip,
+           title = "pca_combined_affy_gse33774_chip_chip_effect_corrected",
+           filePath = paste0(outputDir, "pca_combined_affy_gse33774_chip_chip_effect_corrected.png"))
   
 }
 
