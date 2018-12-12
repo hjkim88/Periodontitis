@@ -321,4 +321,192 @@ significancePlot2 <- function(methyl450kPath="//isilon.c2b2.columbia.edu/ifs/arc
     write.xlsx2(add_info, file = paste0(outputDir, "GeneRIF_", substr(basename(methylRegPath), 1, nchar(basename(methylRegPath))-4), "_all.xlsx"), row.names = FALSE)
   }
   
+  
+  ### Since there are many genes that both differentially expressed and differentially methylated,
+  ### it is possible to perform pathway analysis with those genes
+  ### here, we set FDR threshold as 1e-6 for the pathway analysis
+  pathwayThreshold <- 0.000001
+  
+  ### A function to change gene names (from human gene symbol to Entrez ID)
+  convert <- function(hgnc_symbol) {
+    
+    ### load library
+    if(!require(org.Hs.eg.db)) {
+      source("https://bioconductor.org/biocLite.R")
+      biocLite("org.Hs.eg.db")
+      library(org.Hs.eg.db)
+    }
+    
+    ### mapping information between Gene Symbol and Entrez ID (NCBI ID)
+    map_symbol_eg <- mappedkeys(org.Hs.egSYMBOL2EG)
+    list_symbol2eg <- as.list(org.Hs.egSYMBOL2EG[map_symbol_eg])
+    
+    ### get corresponding Entrez IDs
+    entrez_id <- list_symbol2eg[hgnc_symbol]
+    
+    ### only keep the first element if multiple Entrez ID exists
+    idx <- which(sapply(entrez_id, length) > 1)
+    if(length(idx) > 0) {
+      entrez_id[idx] <- sapply(idx, function(x) entrez_id[[x]][1])
+    }
+    entrez_id <- as.character(entrez_id)
+    
+    return(entrez_id)
+  }
+  
+  # ******************************************************************************************
+  # Pathway Analysis with clusterProfiler package
+  # Input: geneList     = a vector of gene Entrez IDs for pathway analysis [numeric or character]
+  #        org          = organism that will be used in the analysis ["human" or "mouse"]
+  #                       should be either "human" or "mouse"
+  #        database     = pathway analysis database (KEGG or GO) ["KEGG" or "GO"]
+  #        title        = title of the pathway figure [character]
+  #        pv_threshold = pathway analysis p-value threshold (not DE analysis threshold) [numeric]
+  #        displayNum   = the number of pathways that will be displayed [numeric]
+  #                       (If there are many significant pathways show the few top pathways)
+  #        imgPrint     = print a plot of pathway analysis [TRUE/FALSE]
+  #        dir          = file directory path of the output pathway figure [character]
+  #
+  # Output: Pathway analysis results in figure - using KEGG and GO pathways
+  #         The x-axis represents the number of DE genes in the pathway
+  #         The y-axis represents pathway names
+  #         The color of a bar indicates adjusted p-value from the pathway analysis
+  #         For Pathview Result, all colored genes are found DE genes in the pathway,
+  #         and the color indicates log2(fold change) of the DE gene from DE analysis
+  # ******************************************************************************************
+  pathwayAnalysis_CP <- function(geneList,
+                                 org,
+                                 database,
+                                 title="Pathway_Results",
+                                 pv_threshold=0.05,
+                                 displayNum=Inf,
+                                 imgPrint=TRUE,
+                                 dir="./") {
+    
+    ### load library
+    if(!require(clusterProfiler)) {
+      source("https://bioconductor.org/biocLite.R")
+      biocLite("clusterProfiler")
+      library(clusterProfiler)
+    }
+    if(!require(ggplot2)) {
+      install.packages("ggplot2")
+      library(ggplot2)
+    }
+    if(!require(xlsx)) {
+      install.packages("xlsx")
+      library(xlsx)
+    }
+    
+    
+    ### colect gene list (Entrez IDs)
+    geneList <- geneList[which(!is.na(geneList))]
+    
+    if(!is.null(geneList)) {
+      ### make an empty list
+      p <- list()
+      
+      if(database == "KEGG") {
+        ### KEGG Pathway
+        kegg_enrich <- enrichKEGG(gene = geneList, organism = org, pvalueCutoff = pv_threshold)
+        
+        if(is.null(kegg_enrich)) {
+          writeLines("KEGG Result does not exist")
+        } else if(imgPrint == TRUE){
+          if((displayNum == Inf) || (nrow(kegg_enrich@result) <= displayNum)) {
+            result <- kegg_enrich@result
+            description <- kegg_enrich@result$Description
+          } else {
+            result <- kegg_enrich@result[1:displayNum,]
+            description <- kegg_enrich@result$Description[1:displayNum]
+          }
+          
+          if(nrow(kegg_enrich) > 0) {
+            p[[1]] <- ggplot(result, aes(x=Description, y=Count)) + labs(x="", y="Gene Counts") + 
+              theme_classic(base_size = 16) + geom_bar(aes(fill = p.adjust), stat="identity") + coord_flip() +
+              scale_x_discrete(limits = rev(description)) +
+              guides(fill = guide_colorbar(ticks=FALSE, title="P.Val", barheight=10)) +
+              ggtitle(paste0("KEGG ", title))
+            
+            png(paste0(dir, "kegg_", title, "_CB.png"), width = 2000, height = 1000)
+            print(p[[1]])
+            dev.off()
+          } else {
+            writeLines("KEGG Result does not exist")
+          }
+        }
+        
+        if(!is.null(kegg_enrich)) {
+          return(kegg_enrich@result)  
+        }
+      } else if(database == "GO") {
+        ### GO Pathway
+        if(org == "human") {
+          go_enrich <- enrichGO(gene = geneList, OrgDb = 'org.Hs.eg.db', readable = T, ont = "BP", pvalueCutoff = pv_threshold)
+        } else if(org == "mouse") {
+          go_enrich <- enrichGO(gene = geneList, OrgDb = 'org.Mm.eg.db', readable = T, ont = "BP", pvalueCutoff = pv_threshold)
+        } else {
+          go_enrich <- NULL
+          writeLines(paste("Unknown org variable:", org))
+        }
+        
+        if(is.null(go_enrich)) {
+          writeLines("GO Result does not exist")
+        } else if(imgPrint == TRUE) {
+          if((displayNum == Inf) || (nrow(go_enrich@result) <= displayNum)) {
+            result <- go_enrich@result
+            description <- go_enrich@result$Description
+          } else {
+            result <- go_enrich@result[1:displayNum,]
+            description <- go_enrich@result$Description[1:displayNum]
+          }
+          
+          if(nrow(go_enrich) > 0) {
+            p[[2]] <- ggplot(result, aes(x=Description, y=Count)) + labs(x="", y="Gene Counts") + 
+              theme_classic(base_size = 16) + geom_bar(aes(fill = p.adjust), stat="identity") + coord_flip() +
+              scale_x_discrete(limits = rev(description)) +
+              guides(fill = guide_colorbar(ticks=FALSE, title="P.Val", barheight=10)) +
+              ggtitle(paste0("GO ", title))
+            
+            png(paste0(dir, "go_", title, "_CB.png"), width = 2000, height = 1000)
+            print(p[[2]])
+            dev.off()
+          } else {
+            writeLines("GO Result does not exist")
+          }
+        }
+        
+        if(!is.null(go_enrich)) {
+          return(go_enrich@result)  
+        }
+      } else {
+        stop("database prameter should be \"GO\" or \"KEGG\"")
+      }
+    } else {
+      writeLines("geneList = NULL")
+    }
+  }
+  
+  
+  ### pathway analysis
+  ### pathway images
+  fileName <- paste0(substr(basename(methylRegPath), 1, nchar(basename(methylRegPath))-4))
+  pKegg <- pathwayAnalysis_CP(geneList = convert(unique(cor_data$Gene_Name[intersect(which(cor_data$FDR_Expression < pathwayThreshold), which(cor_data$FDR_Methylation < pathwayThreshold))])),
+                              org = "human", database = "KEGG",
+                              title = fileName,
+                              displayNum = 50, imgPrint = TRUE, dir = outputDir)
+  pGo <- pathwayAnalysis_CP(geneList = convert(unique(cor_data$Gene_Name[intersect(which(cor_data$FDR_Expression < pathwayThreshold), which(cor_data$FDR_Methylation < pathwayThreshold))])),
+                            org = "human", database = "GO",
+                            title = fileName,
+                            displayNum = 50, imgPrint = TRUE, dir = outputDir)
+  ### pathway tables
+  if(nrow(pKegg) > 0) {
+    write.xlsx2(pKegg, file = paste0(outputDir, fileName, "_KEGG_Table.xlsx"),
+                sheetName = paste0(fileName, "_KEGG"))
+  }
+  if(nrow(pGo) > 0) {
+    write.xlsx2(pGo, file = paste0(outputDir, fileName, "_GO_Table.xlsx"),
+                sheetName = paste0(fileName, "_GO"))
+  }
+  
 }
