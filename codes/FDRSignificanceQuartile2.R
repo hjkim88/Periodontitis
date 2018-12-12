@@ -16,19 +16,21 @@
 #
 #   Example
 #               > source("The_directory_of_FDRSignificanceQuartile2.R/FDRSignificanceQuartile2.R")
-#               > significancePlot2(methylPath="./results/DMA/DMP_Periodontitis_450k_vs_Healthy_EPIC.txt",
-#                                   methylRegPath="./results/DMA/DMR_Periodontitis_450k_vs_Healthy_EPIC.txt",
-#                                   rnaseqPath="./results/DEA/limma_affy_periodontitis_vs_healthy.xlsx",
+#               > significancePlot2(methyl450kPath="./results/DMA/DMP_Periodontitis_450k_vs_Healthy_EPIC.txt",
+#                                   methyl450kRegPath="./results/DMA/DMR_Periodontitis_450k_vs_Healthy_EPIC.txt",
+#                                   affyPath="./results/DEA/limma_affy_periodontitis_vs_healthy.xlsx",
 #                                   geneRIFPath="./data/generifs_basic.txt",
 #                                   fdrThreshold=1e-20,
+#                                   importantGenePath="./results/Combined/List_-log10(FDR)_DMR_Periodontitis_Healthy_all.xlsx",
 #                                   outputDir="./results/Combined/")
 ###
 
-significancePlot2 <- function(methylPath="//isilon.c2b2.columbia.edu/ifs/archive/shares/bisr/Papapanou/Sept_2018/DifferentialMethylation/DMP_Periodontitis_450k_vs_Healthy_EPIC.txt",
-                              methylRegPath="//isilon.c2b2.columbia.edu/ifs/archive/shares/bisr/Papapanou/Sept_2018/DifferentialMethylation/DMR_Periodontitis_450k_vs_Healthy_EPIC.txt",
-                              rnaseqPath="//isilon.c2b2.columbia.edu/ifs/archive/shares/bisr/Papapanou/Sept_2018/DifferentialExpression/limma_affy_periodontitis_vs_healthy.xlsx",
+significancePlot2 <- function(methyl450kPath="//isilon.c2b2.columbia.edu/ifs/archive/shares/bisr/Papapanou/Sept_2018/DifferentialMethylation/DMP_Periodontitis_450k_vs_Healthy_EPIC.txt",
+                              methyl450kRegPath="//isilon.c2b2.columbia.edu/ifs/archive/shares/bisr/Papapanou/Sept_2018/DifferentialMethylation/DMR_Periodontitis_450k_vs_Healthy_EPIC.txt",
+                              affyPath="//isilon.c2b2.columbia.edu/ifs/archive/shares/bisr/Papapanou/Sept_2018/DifferentialExpression/limma_affy_periodontitis_vs_healthy.xlsx",
                               geneRIFPath="//isilon.c2b2.columbia.edu/ifs/archive/shares/bisr/Papapanou/Sept_2018/PreprocessedData/generifs_basic.txt",
                               fdrThreshold=1e-20,
+                              importantGenePath="//isilon.c2b2.columbia.edu/ifs/archive/shares/bisr/Papapanou/Sept_2018/Combined/FDR_Plot/List_-log10(FDR)_DMR_Periodontitis_Healthy_all.xlsx",
                               outputDir="//isilon.c2b2.columbia.edu/ifs/archive/shares/bisr/Papapanou/Sept_2018/Combined/FDR_Plot/") {
   
   ### load libraries
@@ -53,9 +55,9 @@ significancePlot2 <- function(methylPath="//isilon.c2b2.columbia.edu/ifs/archive
   
   
   ### load data
-  dmp <- read.table(file = methylPath, header = TRUE, sep = "\t", check.names = FALSE)
-  dmr <- read.table(file = methylRegPath, header = TRUE, sep = "\t", check.names = FALSE)
-  de <- read.xlsx2(file = rnaseqPath, sheetIndex = 1, stringsAsFactors = FALSE)
+  dmp <- read.table(file = methyl450kPath, header = TRUE, sep = "\t", check.names = FALSE)
+  dmr <- read.table(file = methyl450kRegPath, header = TRUE, sep = "\t", check.names = FALSE)
+  de <- read.xlsx2(file = affyPath, sheetIndex = 1, stringsAsFactors = FALSE)
   
   
   ### set row names
@@ -198,6 +200,62 @@ significancePlot2 <- function(methylPath="//isilon.c2b2.columbia.edu/ifs/archive
   legend("topleft", legend=c("Result", "Random", "Best (identical)"),
          col=c("black", "red", "blue"), lty=c(1,2,2), cex=1)
   dev.off()
+  
+  
+  ### A table of statistics of the important genes found from the new data
+  
+  ### get important genes
+  gList <- read.xlsx2(file = importantGenePath, sheetIndex = 1, stringsAsFactors = FALSE)
+  gList[,3:4] <- apply(gList[,3:4], 2, as.numeric)
+  important_genes <- gList$Gene_Name[intersect(which(gList$FDR_Expression < 0.05),
+                                     which(gList$FDR_Methylation < 0.05))]
+  important_genes <- unique(important_genes)
+  
+  ### make the table
+  importantGeneTable <- NULL
+  for(i in 1:length(important_genes)) {
+    ### get indicies for the given gene name
+    idx1 <- which(cor_data$Gene_Name == important_genes[i])
+    idx2 <- which(gList$Gene_Name == important_genes[i])
+    
+    ### if there is no gene found in the old data, fill NA
+    ### combine stastics of the given gene from both the old and the new data
+    if(length(idx1) > 0) {
+      for(j in 1:length(idx2)) {
+        for(k in 1:length(idx1)) {
+          importantGeneTable <- rbind(importantGeneTable, unlist(cbind(gList[idx2[j],], cor_data[idx1[k],-c(2,7)])))
+        }
+      }      
+    } else {
+      for(j in 1:length(idx2)) {
+        importantGeneTable <- rbind(importantGeneTable, unlist(cbind(gList[idx2[j],], data.frame(t(rep("NA", 5)), stringsAsFactors = FALSE))))
+      }
+    }
+  }
+  colnames(importantGeneTable) <- c("Gene_Name", "EPIC_DMR_Name", "RNASEQ_DE_FDR", "EPIC_DMR_FDR",
+                                    "EPIC_DMR_CpG_Names", "Affy_Probe_ID", "450K_DMR_Name",
+                                    "Affy_DE_FDR", "450K_DMR_FDR", "450K_DMR_CpG_Names")
+  importantGeneTable <- data.frame(importantGeneTable, stringsAsFactors = FALSE, check.names = FALSE)
+  
+  ### shared CpG sites between the old and the new
+  importantGeneTable <- data.frame(importantGeneTable, Shared_CpGs=NA, Shared_CpGs_Num=NA,
+                                   stringsAsFactors = FALSE, check.names = FALSE)
+  for(i in 1:nrow(importantGeneTable)) {
+    ### get CpG names from the EPIC and the 450K data
+    epic_cpgs <- strsplit(importantGeneTable$EPIC_DMR_CpG_Names[i], split = ",", fixed = TRUE)[[1]]
+    methyl450k_cpgs <- strsplit(importantGeneTable$`450K_DMR_CpG_Names`[i], split = ",", fixed = TRUE)[[1]]
+    
+    ### get shared CpGs between them
+    shared_cpgs <- intersect(epic_cpgs, methyl450k_cpgs)
+    
+    ### add the info to the table
+    importantGeneTable$Shared_CpGs[i] <- paste(shared_cpgs, collapse = ",")
+    importantGeneTable$Shared_CpGs_Num[i] <- paste(length(shared_cpgs), "out of", length(epic_cpgs), "(EPIC) &", length(methyl450k_cpgs), "(450k)")
+  }
+  
+  ### write out the table
+  write.xlsx2(importantGeneTable, file = paste0(outputDir, "Important_Genes_Statistics_Table.xlsx"),
+              row.names = FALSE)
   
   
   ### create GeneRIF text
