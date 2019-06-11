@@ -100,7 +100,10 @@ levelCor2 <- function(epicLevelPath="//isilon.c2b2.columbia.edu/ifs/archive/shar
   newSampleInfo <- newSampleInfo[common_samples,]
   rnaseqLev_periodontitis <- rnaseqLev[,which(newSampleInfo$Phenotype == "Periodontitis")]
   epic_periodontitis <- epicLev[,which(newSampleInfo$Phenotype == "Periodontitis")]
-  
+  rnaseqLev_periodontitis_healthy <- rnaseqLev[,union(which(newSampleInfo$Phenotype == "Periodontitis"),
+                                                      which(newSampleInfo$Phenotype == "Healthy"))]
+  epic_periodontitis_healthy <- epicLev[,union(which(newSampleInfo$Phenotype == "Periodontitis"),
+                                               which(newSampleInfo$Phenotype == "Healthy"))]
   
   ### correlation measuring
   
@@ -271,5 +274,58 @@ levelCor2 <- function(epicLevelPath="//isilon.c2b2.columbia.edu/ifs/archive/shar
              geom_smooth(method = lm, color="blue", se=FALSE) +
              theme_classic(base_size = 16)
   ggsave(filename = paste0(outputDir, fName), arrangeGrob(oldPlot, newPlot, ncol = 2), width = 20, height = 10)
+  
+  
+  ### Put two classes in one plot and measure correlation between GE and Methyl
+  ### NEW
+  png(paste0(outputDir, "DEMG_Level_Correlations_Periodontitis_Healthy.png"), width = 2000, height = 1200, res = 120)
+  par(mfrow=c(3,4), oma = c(0,0,3,0))
+  ### color for the sample based on their classes
+  ### based on - union(which(newSampleInfo$Phenotype == "Periodontitis"),which(newSampleInfo$Phenotype == "Healthy"))
+  colors <- c(rep("blue", length(which(newSampleInfo$Phenotype == "Periodontitis"))),
+              rep("green", length(which(newSampleInfo$Phenotype == "Healthy"))))
+  ### for each gene draw a plot
+  for(gene in gList) {
+    plot(as.numeric(rnaseqLev_periodontitis_healthy[gene,]), as.numeric(epic_periodontitis_healthy[gene,]),
+         pch = 19, col = colors,
+         main = sprintf("P.Cor = %s, p-value = %s",
+                        round(cor(as.numeric(rnaseqLev_periodontitis_healthy[gene,]), as.numeric(epic_periodontitis_healthy[gene,]), use = "pairwise.complete.obs"), 5),
+                        signif(cor.test(as.numeric(rnaseqLev_periodontitis_healthy[gene,]), as.numeric(epic_periodontitis_healthy[gene,]))$p.value, 5)),
+         xlab = paste("Normalized Expression of", gene),
+         ylab = paste("Normalized M value of", gene))
+    abline(lm(as.numeric(epic_periodontitis_healthy[gene,])~as.numeric(rnaseqLev_periodontitis_healthy[gene,])), col="red")
+    legend("topright", legend = c("Periodontitis", "Healthy"),
+           col = c("blue", "green"), pch = 19,
+           title = "Sample Groups", cex = 0.7)
+  }
+  mtext(paste("RNA-Seq & EPIC Level Correlations"), outer = TRUE, cex = 2)
+  dev.off()
+  
+  ### OLD
+  methyl450kLev <- methyl450kLev[which(!duplicated(methyl450kLev$Gene_Symbol)),]
+  affy_norm_ge <- affy_norm_ge[which(!duplicated(affy_norm_ge$Gene_Symbol)),]
+  rownames(methyl450kLev) <- methyl450kLev$Gene_Symbol
+  rownames(affy_norm_ge) <- affy_norm_ge$Gene_Symbol
+  methyl450kLev <- methyl450kLev[,-1]
+  affy_norm_ge <- affy_norm_ge[,-1]
+  
+  png(paste0(outputDir, "DEMG_Level_Correlations_Periodontitis_Healthy2.png"), width = 2000, height = 1200, res = 120)
+  par(mfrow=c(3,4), oma = c(0,0,3,0))
+  ### for each gene draw a plot
+  for(gene in intersect(gList, rownames(affy_norm_ge))) {
+    plot(as.numeric(affy_norm_ge[gene,]), as.numeric(methyl450kLev[gene,]),
+         pch = 19, col = "black",
+         main = sprintf("P.Cor = %s, p-value = %s",
+                        round(cor(as.numeric(affy_norm_ge[gene,]), as.numeric(methyl450kLev[gene,]), use = "pairwise.complete.obs"), 5),
+                        signif(cor.test(as.numeric(affy_norm_ge[gene,]), as.numeric(methyl450kLev[gene,]))$p.value, 5)),
+         xlab = paste("Normalized Expression of", gene),
+         ylab = paste("Normalized M value of", gene))
+    abline(lm(as.numeric(methyl450kLev[gene,])~as.numeric(affy_norm_ge[gene,])), col="red")
+    legend("topright", legend = c("Periodontitis"),
+           col = c("black"), pch = 19,
+           title = "Sample Groups", cex = 0.7)
+  }
+  mtext(paste("Affy & 450K Level Correlations"), outer = TRUE, cex = 2)
+  dev.off()
   
 }
