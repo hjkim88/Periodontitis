@@ -669,7 +669,3 @@ clusteringAffy <- function(affyPath="//isilon.c2b2.columbia.edu/ifs/archive/shar
            filePath = paste0(outputDir, "pca_combined_affy_gse33774_chip_chip_effect_corrected.png"))
   
 }
-
-
-
-
