@@ -281,52 +281,52 @@ jcr_revision <- function(methylPath="./results/DMA/DMP_Periodontitis_Healthy.txt
   ### pca plot - gender
   sampleInfo$Gender[which(sampleInfo$Gender == "M")] <- "Male"
   sampleInfo$Gender[which(sampleInfo$Gender == "F")] <- "Female"
-  p[[1]] <- pca_plot(normalizedMat = data.frame(normalized_gexp,
+  p[[1]] <- pca_plot(normalizedMat = data.frame(methylLev,
+                                                stringsAsFactors = FALSE, check.names = FALSE),
+                     grp = as.character(sampleInfo$Gender),
+                     title = paste0("PCA_Methylation_SEX"),
+                     save = FALSE,
+                     outDir = outputDir)
+  p[[2]] <- pca_plot(normalizedMat = data.frame(normalized_gexp,
                                       stringsAsFactors = FALSE, check.names = FALSE),
-           grp = as.character(sampleInfo$Gender),
-           title = paste0("PCA_GEXP_GENDER"),
-           save = FALSE,
-           outDir = outputDir)
-  p[[2]] <- pca_plot(normalizedMat = data.frame(methylLev,
-                                      stringsAsFactors = FALSE, check.names = FALSE),
-           grp = as.character(sampleInfo$Gender),
-           title = paste0("PCA_Methylation_GENDER"),
-           save = FALSE,
-           outDir = outputDir)
+                     grp = as.character(sampleInfo$Gender),
+                     title = paste0("PCA_GEXP_SEX"),
+                     save = FALSE,
+                     outDir = outputDir)
   
   ### pca plot - race
-  p[[3]] <- pca_plot(normalizedMat = data.frame(normalized_gexp,
+  p[[3]] <- pca_plot(normalizedMat = data.frame(methylLev,
+                                                stringsAsFactors = FALSE, check.names = FALSE),
+                     grp = as.character(sampleInfo$Race.Ethnicity),
+                     title = paste0("PCA_Methylation_RACE"),
+                     save = FALSE,
+                     outDir = outputDir)
+  p[[4]] <- pca_plot(normalizedMat = data.frame(normalized_gexp,
                                       stringsAsFactors = FALSE, check.names = FALSE),
-           grp = as.character(sampleInfo$Race.Ethnicity),
-           title = paste0("PCA_GEXP_RACE"),
-           save = FALSE,
-           outDir = outputDir)
-  p[[4]] <- pca_plot(normalizedMat = data.frame(methylLev,
-                                      stringsAsFactors = FALSE, check.names = FALSE),
-           grp = as.character(sampleInfo$Race.Ethnicity),
-           title = paste0("PCA_Methylation_RACE"),
-           save = FALSE,
-           outDir = outputDir)
+                     grp = as.character(sampleInfo$Race.Ethnicity),
+                     title = paste0("PCA_GEXP_RACE"),
+                     save = FALSE,
+                     outDir = outputDir)
   
   ### pca plot - age
   sampleInfo$Age2 <- "Age >= 50"
   sampleInfo$Age2[which(sampleInfo$Age < 50)] <- "Age < 50"
-  p[[5]] <- pca_plot(normalizedMat = data.frame(normalized_gexp,
-                                      stringsAsFactors = FALSE, check.names = FALSE),
-           grp = as.character(sampleInfo$Age2),
-           title = paste0("PCA_GEXP_AGE"),
-           save = FALSE,
-           outDir = outputDir)
-  p[[6]] <- pca_plot(normalizedMat = data.frame(methylLev,
-                                      stringsAsFactors = FALSE, check.names = FALSE),
-           grp = as.character(sampleInfo$Age2),
-           title = paste0("PCA_Methylation_AGE"),
-           save = FALSE,
-           outDir = outputDir)
+  p[[5]] <- pca_plot(normalizedMat = data.frame(methylLev,
+                                                stringsAsFactors = FALSE, check.names = FALSE),
+                     grp = as.character(sampleInfo$Age2),
+                     title = paste0("PCA_Methylation_AGE"),
+                     save = FALSE,
+                     outDir = outputDir)
+  p[[6]] <- pca_plot(normalizedMat = data.frame(normalized_gexp,
+                                                stringsAsFactors = FALSE, check.names = FALSE),
+                     grp = as.character(sampleInfo$Age2),
+                     title = paste0("PCA_GEXP_AGE"),
+                     save = FALSE,
+                     outDir = outputDir)
   
   ### arrange the plots and print out
   g <- grid.arrange(grobs = p, ncol = 2, nrow = 3)
-  ggsave(file = paste0(outputDir, "PCA_AGE_GENDER_RACE.png"), g, width = 20, height = 20, dpi = 300)
+  ggsave(file = paste0(outputDir, "PCA_AGE_GENDER_RACE7.png"), g, width = 20, height = 20, dpi = 350)
   
   ### A pie chart and Venn diagram showing number of genes overlapping
   #   (differentially methylated/differentially expressed) among health, gingivitis,
@@ -366,15 +366,15 @@ jcr_revision <- function(methylPath="./results/DMA/DMP_Periodontitis_Healthy.txt
   ### draw a venn diagram for EPIC DE
   venn.diagram(
     x = list(de_genes1, de_genes2, de_genes3),
-    category.names = c("Periodontitis_vs_Health", "Gingivitis_vs_Health", "Periodontitis_vs_Gingivitis"),
-    filename = paste0(outputDir, "EPIC_Overlapping_DEGs.png"),
+    category.names = c("Periodontitis vs Health", "Gingivitis vs Health", "Periodontitis vs Gingivitis"),
+    filename = paste0(outputDir, "EPIC_Overlapping_DEGs3.png"),
     output=TRUE,
     
     # Output features
     imagetype="png",
-    width = 1080,
-    height = 960,
-    resolution = 300,
+    width = 1250,
+    height = 1050,
+    resolution = 350,
     compression = "lzw",
     
     # Circles
@@ -400,15 +400,15 @@ jcr_revision <- function(methylPath="./results/DMA/DMP_Periodontitis_Healthy.txt
   ### draw a venn diagram for EPIC DMP
   venn.diagram(
     x = list(dm_cpgs1, dm_cpgs2, dm_cpgs3),
-    category.names = c("Periodontitis_vs_Health", "Gingivitis_vs_Health", "Periodontitis_vs_Gingivitis"),
-    filename = paste0(outputDir, "EPIC_Overlapping_DMPs.png"),
+    category.names = c("Periodontitis vs Health", "Gingivitis vs Health", "Periodontitis vs Gingivitis"),
+    filename = paste0(outputDir, "EPIC_Overlapping_DMPs3.png"),
     output=TRUE,
     
     # Output features
     imagetype="png",
-    width = 1080,
-    height = 960,
-    resolution = 300,
+    width = 1250,
+    height = 1050,
+    resolution = 350,
     compression = "lzw",
     
     # Circles
@@ -473,6 +473,6 @@ jcr_revision <- function(methylPath="./results/DMA/DMP_Periodontitis_Healthy.txt
     theme(axis.title.x = element_blank(),
           axis.text = element_text(size = 50),
           axis.text.x = element_text(angle = -45, hjust = 0))
-  ggsave(file = paste0(outputDir, "Regulatory_Features_DMPs.png"), width = 20, height = 15)
+  ggsave(file = paste0(outputDir, "Regulatory_Features_DMPs2.png"), width = 20, height = 15, dpi = 350)
   
 }
