@@ -41,32 +41,36 @@ dma <- function(inputFilelPath="//isilon.c2b2.columbia.edu/ifs/archive/shares/bi
                 outputDir="//isilon.c2b2.columbia.edu/ifs/archive/shares/bisr/Papapanou/Sept_2018/DifferentialMethylation/") {
   
   ### load libraries
-  if(!require(limma)) {
-    source("https://bioconductor.org/biocLite.R")
-    biocLite("limma")
-    library(limma)
+  if(!require(limma, quietly = TRUE)) {
+    if (!requireNamespace("BiocManager", quietly = TRUE))
+      install.packages("BiocManager")
+    BiocManager::install("limma")
+    require(limma, quietly = TRUE)
   }
-  if(!require(minfi)) {
-    source("https://bioconductor.org/biocLite.R")
-    biocLite("minfi")
-    library(minfi)
+  if(!require(minfi, quietly = TRUE)) {
+    if (!requireNamespace("BiocManager", quietly = TRUE))
+      install.packages("BiocManager")
+    BiocManager::install("minfi")
+    require(minfi, quietly = TRUE)
   }
-  if(!require(IlluminaHumanMethylationEPICanno.ilm10b2.hg19)) {
-    source("https://bioconductor.org/biocLite.R")
-    biocLite("IlluminaHumanMethylationEPICanno.ilm10b2.hg19")
-    library(IlluminaHumanMethylationEPICanno.ilm10b2.hg19)
+  if(!require(IlluminaHumanMethylationEPICanno.ilm10b2.hg19, quietly = TRUE)) {
+    if (!requireNamespace("BiocManager", quietly = TRUE))
+      install.packages("BiocManager")
+    BiocManager::install("IlluminaHumanMethylationEPICanno.ilm10b2.hg19")
+    require(IlluminaHumanMethylationEPICanno.ilm10b2.hg19, quietly = TRUE)
   }
-  if(!require(DMRcate)) {
-    source("https://bioconductor.org/biocLite.R")
-    biocLite("DMRcate")
-    library(DMRcate)
+  if(!require(DMRcate, quietly = TRUE)) {
+    if (!requireNamespace("BiocManager", quietly = TRUE))
+      install.packages("BiocManager")
+    BiocManager::install("DMRcate")
+    require(DMRcate, quietly = TRUE)
   }
-  if(!require(missMethyl)) {
-    source("https://bioconductor.org/biocLite.R")
-    biocLite("missMethyl")
-    library(missMethyl)
+  if(!require(missMethyl, quietly = TRUE)) {
+    if (!requireNamespace("BiocManager", quietly = TRUE))
+      install.packages("BiocManager")
+    BiocManager::install("missMethyl")
+    require(missMethyl, quietly = TRUE)
   }
-  
   
   ### load data
   load(inputFilelPath)
@@ -150,7 +154,7 @@ dma <- function(inputFilelPath="//isilon.c2b2.columbia.edu/ifs/archive/shares/bi
   
   ### get DMRs
   ### Gingivitis - Healthy
-  if(length(which(myAnno1$is.sig == TRUE)) > 0) {
+  if(length(which(myAnno1@ranges$is.sig == TRUE)) > 0) {
     ### get DMRs
     DMRs1 <- dmrcate(myAnno1, lambda=1000, C=2)
     ### extract ranges from DMRs
@@ -166,7 +170,7 @@ dma <- function(inputFilelPath="//isilon.c2b2.columbia.edu/ifs/archive/shares/bi
     }
   }
   ### Periodontitis - Healthy
-  if(length(which(myAnno2$is.sig == TRUE)) > 0) {
+  if(length(which(myAnno2@ranges$is.sig == TRUE)) > 0) {
     ### get DMRs
     DMRs2 <- dmrcate(myAnno2, lambda=1000, C=2)
     ### extract ranges from DMRs
@@ -182,7 +186,7 @@ dma <- function(inputFilelPath="//isilon.c2b2.columbia.edu/ifs/archive/shares/bi
     }
   }
   ### Periodontitis - Gingivitis
-  if(length(which(myAnno3$is.sig == TRUE)) > 0) {
+  if(length(which(myAnno3@ranges$is.sig == TRUE)) > 0) {
     ### get DMRs
     DMRs3 <- dmrcate(myAnno3, lambda=1000, C=2)
     ### extract ranges from DMRs
@@ -208,33 +212,33 @@ dma <- function(inputFilelPath="//isilon.c2b2.columbia.edu/ifs/archive/shares/bi
   ### draw DMR plots with top DMRs
   for(i in 1:dmrPrintNum) {
     ### Gingivitis - Healthy
-    if(length(which(myAnno1$is.sig == TRUE)) >= i) {
+    if(length(which(myAnno1@ranges$is.sig == TRUE)) >= i) {
       ### draw DMR plots
       idx <- union(which(sample_info$Phenotype == "Gingivitis"),
                    which(sample_info$Phenotype == "Healthy"))
-      png(paste0(outputDir, "DMR", i, "_Gingivitis_Healthy.png"), width = 1800, height = 1000)
+      png(paste0(outputDir, "DMR", i, "_Gingivitis_Healthy.png"), width = 3600, height = 2400, res = 350)
       DMR.plot(ranges=results.ranges1, dmr=i, CpGs=m[,idx], phen.col=cols[idx], what = "M",
                arraytype = "EPIC", pch=16, toscale=TRUE, plotmedians=TRUE, 
                genome="hg19", samps=1:length(idx))
       dev.off()
     }
     ### Periodontitis - Healthy
-    if(length(which(myAnno2$is.sig == TRUE)) >= i) {
+    if(length(which(myAnno2@ranges$is.sig == TRUE)) >= i) {
       ### draw DMR plots
       idx <- union(which(sample_info$Phenotype == "Periodontitis"),
                    which(sample_info$Phenotype == "Healthy"))
-      png(paste0(outputDir, "DMR", i, "_Periodontitis_Healthy.png"), width = 1800, height = 1000)
+      png(paste0(outputDir, "DMR", i, "_Periodontitis_Healthy.png"), width = 3600, height = 2400, res = 350)
       DMR.plot(ranges=results.ranges2, dmr=i, CpGs=m[,idx], phen.col=cols[idx], what = "M",
                arraytype = "EPIC", pch=16, toscale=TRUE, plotmedians=TRUE, 
                genome="hg19", samps=1:length(idx))
       dev.off()
     }
     ### Periodontitis - Gingivitis
-    if(length(which(myAnno3$is.sig == TRUE)) >= i) {
+    if(length(which(myAnno3@ranges$is.sig == TRUE)) >= i) {
       ### draw DMR plots
       idx <- union(which(sample_info$Phenotype == "Periodontitis"),
                    which(sample_info$Phenotype == "Gingivitis"))
-      png(paste0(outputDir, "DMR", i, "_Periodontitis_Gingivitis.png"), width = 1800, height = 1000)
+      png(paste0(outputDir, "DMR", i, "_Periodontitis_Gingivitis.png"), width = 3600, height = 2400, res = 350)
       DMR.plot(ranges=results.ranges3, dmr=i, CpGs=m[,idx], phen.col=cols[idx], what = "M",
                arraytype = "EPIC", pch=16, toscale=TRUE, plotmedians=TRUE, 
                genome="hg19", samps=1:length(idx))
